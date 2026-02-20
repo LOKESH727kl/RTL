@@ -1,27 +1,26 @@
 module task_1(
-    input clkA,
-    input clkB,
-    input rst_n,
-	input sigA,
-    output logic out
+    input clkA,				// Source clock domain clock A
+    input clkB,				// Destination clock domain clock B
+    input rst_n,			//  Active-low reset
+	input sigA,				// Incoming pulse
+    output logic out 		//output pulse single cycle
 );
     logic q1_out;
     logic d_in;
-    assign d_in = sigA ^ q1_out;
+    assign d_in = sigA ^ q1_out;  // xor operation Toggle logic
 
+	//////block1_flipflop_1/////////
 always_ff @(posedge clkA or negedge rst_n)
     if(!rst_n)  q1_out <= 0;
     else        q1_out <= d_in;
-
+	//////block_2_flipflops/////////
 logic [2:0] q2_out;
-
 always_ff @(posedge clkB or negedge rst_n) 
-  if (!rst_n) q2_out <= 3'h0;
-  else  		q2_out <= {q2_out[1:0], q1_out};   
-
-assign out = q2_out[2] ^ q2_out[1];
+  if (!rst_n) 	q2_out <= 3'h0;
+	else  		q2_out <= {q2_out[1:0], q1_out};   //concatenation for synchronization
+	
+	assign out = q2_out[2] ^ q2_out[1]; //Edge detection using XOR
 endmodule
-
 
 /*
 module task_1(
