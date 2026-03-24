@@ -10,26 +10,26 @@ module cxs_tx_256to512 (
     // =========================================================
     // Clock & Reset
     // =========================================================
-    input  logic          cxs_clk,      // System clock
-    input  logic          cxs_rst_n,    // Active-low asynchronous reset
+    input  logic          tx_cxs_clk,      // System clock
+    input  logic          tx_cxs_rst_n,    // Active-low asynchronous reset
 
     // =========================================================
     // CXS TX-side Interface (Protocol Boundary)
     // =========================================================
-    input  logic          cxs_valid,        // Indicates valid CXS payload data
-    input  logic          cxs_last,         // Indicates end of packet
-    input  logic          cxs_activereq,    // Request to activate link
-    input  logic          cxs_crdrtn,       // Credit return from receiver
-    input  logic [2:0]    cxs_prcltype,     // Protocol type field
-    input  logic [13:0]   cxs_cntl,         // CXS control field
-    input  logic [255:0]  cxs_data,         // 256-bit payload input
+    input  logic          tx_cxs_valid,        // Indicates valid CXS payload data
+    input  logic          tx_cxs_last,         // Indicates end of packet
+    input  logic          tx_cxs_activereq,    // Request to activate link
+    input  logic          tx_cxs_crdrtn,       // Credit return from receiver
+    input  logic [2:0]    tx_cxs_prcltype,     // Protocol type field
+    input  logic [13:0]   tx_cxs_cntl,         // CXS control field
+    input  logic [255:0]  tx_cxs_data,         // 256-bit payload input
 
     // =========================================================
     // Link & Credit Control Outputs
     // =========================================================
-    output logic          cxs_activeack,    // Link activation acknowledge
-    output logic          cxs_crdgnt,       // Credit grant to transmit
-    output logic          cxs_deacthint,    // Hint for link deactivation
+    output logic          tx_cxs_activeack,    // Link activation acknowledge
+    output logic          tx_cxs_crdgnt,       // Credit grant to transmit
+    output logic          tx_cxs_deacthint,    // Hint for link deactivation
 	output logic 		  pkt_send_sts_vld, // Packet send status valid flag
     output logic [1:0]    pkt_send_sts,     // Packet transmission status
 
@@ -39,6 +39,7 @@ module cxs_tx_256to512 (
     input  logic          rx_ready,         // Receiver ready signal
     output logic          tx_valid,         // TX ready during activation
     output logic          tx_pkt_vld,       // Valid packet output
+	output logic 		  tx_header_err_vld,    	// Header error valid flag (for header integrity check)
     output logic [511:0]  tx_pkt_data       // 512-bit transmit packet
 );
 
@@ -46,15 +47,13 @@ module cxs_tx_256to512 (
     // Internal Signals
     // =========================================================
 
-    logic cxs_activeack_deassert;   // Used to determine when activation acknowledge must be cleared
+    logic tx_cxs_activeack_deassert;   // Used to determine when activation acknowledge must be cleared
 
     logic data_buf_valid;    		// Indicates payload buffer contains valid data
-  
-    logic tx_header_err_vld;    	// Header error valid flag (for header integrity check)
 	
-    logic dp;    					// Data parity (payload parity bit)
+    logic tx_dp;    					// Data parity (payload parity bit)
 
-    logic cp;    					// Control/header parity bit
+    logic tx_cp;    					// Control/header parity bit
 
     logic [1:0] cxs_tx_max_pkt_perflit;    // Encoded maximum packets per flit
 
@@ -79,33 +78,33 @@ parameter DATA_FLITWIDTH  = 2'b01;   // Encoded flit width (e.g., 256-bit mode)
 
 // tx_valid indicates that transmitter is ready when activation is requested
  
-always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-  if (!cxs_rst_n)	tx_valid <= 1'b0;
-  else 				tx_valid <= cxs_activereq;
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  if (!tx_cxs_rst_n)	tx_valid <= 1'b0;
+  else 				tx_valid <= tx_cxs_activereq;
 
-assign cxs_activeack_deassert = (!(cxs_activereq & tx_valid & rx_ready));
+assign tx_cxs_activeack_deassert = (!(tx_cxs_activereq & tx_valid & rx_ready));
   
 // ============================================================
 // 			Activation Acknowledge Logic  
 // ============================================================
-//Case1 — cxs_activeack and cxs_crdgnt same cycle
-always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-	if (!cxs_rst_n)									cxs_activeack <= 1'b0;
-	else if (cxs_activeack_deassert)				cxs_activeack <= 1'b0;
-	else if (cxs_activereq & tx_valid & rx_ready)	cxs_activeack <= 1'b1;
+//Case1 — tx_cxs_activeack and tx_cxs_crdgnt same cycle
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+	if (!tx_cxs_rst_n)										tx_cxs_activeack <= 1'b0;
+	else if (tx_cxs_activeack_deassert)					tx_cxs_activeack <= 1'b0;
+	else if (tx_cxs_activereq & tx_valid & rx_ready)	tx_cxs_activeack <= 1'b1;
  
-always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-	if (!cxs_rst_n)									cxs_crdgnt <= 1'b0;
-   	else if (cxs_activeack_deassert)				cxs_crdgnt <= 1'b0;
-  	else if(cxs_activereq & tx_valid & rx_ready)	cxs_crdgnt <= 1'b1;
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+	if (!tx_cxs_rst_n)									tx_cxs_crdgnt <= 1'b0;
+   	else if (tx_cxs_activeack_deassert)				tx_cxs_crdgnt <= 1'b0;
+  	else if(tx_cxs_activereq & tx_valid & rx_ready)	tx_cxs_crdgnt <= 1'b1;
 
 // ============================================================
 // Deactivation Hint Logic
 // ============================================================
 
-always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-	if (!cxs_rst_n) cxs_deacthint <= 1'b0;
-	else			cxs_deacthint <= (cxs_activeack & (!cxs_activereq)); 
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+	if (!tx_cxs_rst_n) tx_cxs_deacthint <= 1'b0;
+	else			tx_cxs_deacthint <= (tx_cxs_activeack & (!tx_cxs_activereq)); 
 		
 // ============================================================
 // Payload Buffer Capture
@@ -115,40 +114,40 @@ always_ff @(posedge cxs_clk or negedge cxs_rst_n)
   
 logic data_buf_en;
   
-always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-  if (!cxs_rst_n)	{data_buf_valid,data_buf} <= 257'h0;
-  else				{data_buf_valid,data_buf} <= (data_buf_en) ? {cxs_valid,cxs_data[255:0]} : {data_buf_valid,data_buf};
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+  if (!tx_cxs_rst_n)	{data_buf_valid,data_buf} <= 257'h0;
+  else				{data_buf_valid,data_buf} <= (data_buf_en) ? {tx_cxs_valid,tx_cxs_data[255:0]} : {data_buf_valid,data_buf};
   
-always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-  if (!cxs_rst_n)			data_buf_en <= 1'b0;
-  else if (! cxs_activereq)	data_buf_en <= 1'b0;
-  else if (cxs_crdgnt) 		data_buf_en <= 1'b1;	
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+  if (!tx_cxs_rst_n)				data_buf_en <= 1'b0;
+  else if (! tx_cxs_activereq)	data_buf_en <= 1'b0;
+  else if (tx_cxs_crdgnt) 		data_buf_en <= 1'b1;	
 
 assign cxs_tx_max_pkt_perflit = MAX_PKT_PERFLIT;
 assign cxs_tx_data_flitwidth  = DATA_FLITWIDTH;  
 
-assign dp = (^(data_buf[255:0])); 	 //all the datfields ;
-assign cp = (^(tx_header[253:0])); 	//all the header fields ;
+assign tx_dp = (^(data_buf[255:0])); 	 //all the datfields ;
+assign tx_cp = (^(tx_header[253:0])); 	//all the header fields ;
 
 assign tx_header_err_vld = ((tx_header[253:52]!= 202'h0)	  | 
-                            (tx_header[51:49] != cxs_prcltype)|
+                            (tx_header[51:49] != tx_cxs_prcltype)|
                             (tx_header[48:47] != 2'h1)		  |
                             (tx_header[46:45] != 2'h1)		  |
-                            (tx_header[44]	  != cxs_last)	  |
+                            (tx_header[44]	  != tx_cxs_last)	  |
                             (tx_header[43:14] != 30'h0)		  |
-                            (tx_header[13:0]  != cxs_cntl[13:0])
+                            (tx_header[13:0]  != tx_cxs_cntl[13:0])
                             );
   
 assign tx_header = (data_buf_valid) ? {
-  dp,						// [255]
-  cp,  						// [254]
+  tx_dp,						// [255]
+  tx_cp,  						// [254]
   202'h0,           		// [253:52]  (253-52+1 = 202 bits)
-  cxs_prcltype,				// [51:49]	 (3 bits)
+  tx_cxs_prcltype,				// [51:49]	 (3 bits)
   cxs_tx_max_pkt_perflit,	// [48:47]   (2 bits)
   cxs_tx_data_flitwidth,	// [46:45]   (2 bits)
-  cxs_last,        			// [44]
+  tx_cxs_last,        			// [44]
   30'h0,                  	// [43:14]   (30 bits)
-  cxs_cntl             		// [13:0]    (14 bits)
+  tx_cxs_cntl             		// [13:0]    (14 bits)
   } : 256'h0;
 
 
@@ -158,8 +157,8 @@ assign tx_header = (data_buf_valid) ? {
 // Purpose:
 //   Forms 512-bit transmit packet and drives TX interface.  
   
-always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-  if (!cxs_rst_n)	{tx_pkt_vld,tx_pkt_data} <= 513'h0;
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  if (!tx_cxs_rst_n)	{tx_pkt_vld,tx_pkt_data} <= 513'h0;
   else				{tx_pkt_vld,tx_pkt_data} <= (data_buf_valid) ? {1'b1,tx_header[255:0],data_buf[255:0]} : 513'h0;
 
 // ============================================================
@@ -171,12 +170,12 @@ always_ff @(posedge cxs_clk or negedge cxs_rst_n)
 //   2'b10 → Header error detected
 //   2'b11 → Reserved
   
-always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-  if (!cxs_rst_n)	pkt_send_sts <= 2'b00;
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+  if (!tx_cxs_rst_n)	pkt_send_sts <= 2'b00;
   else 				pkt_send_sts <= (tx_header_err_vld) ? 2'b10 : (data_buf_valid) ? 2'b01 : 2'b00 ;
 
-always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-  if (!cxs_rst_n)	pkt_send_sts_vld <= 1'b0;
+always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+  if (!tx_cxs_rst_n)	pkt_send_sts_vld <= 1'b0;
   else 				pkt_send_sts_vld <= (tx_header_err_vld | data_buf_valid) ;
   
 `else 
@@ -193,40 +192,40 @@ always_ff @(posedge cxs_clk or negedge cxs_rst_n)
   
   
   assign tx_header = 256'h0;
-  assign cxs_activeack_deassert = 1'b0;
+  assign tx_cxs_activeack_deassert = 1'b0;
   assign tx_header_err_vld = 1'b0;
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-   	if (!cxs_rst_n) data_tx_cnt <= 2'h0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+   	if (!tx_cxs_rst_n) data_tx_cnt <= 2'h0;
   	else 			data_tx_cnt <= 2'h0;
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n)
-    if (!cxs_rst_n) {data_buf_valid,data_buf}	<= 257'h0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
+    if (!tx_cxs_rst_n) {data_buf_valid,data_buf}	<= 257'h0;
   	else 			{data_buf_valid,data_buf}	<= 257'h0;
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-  	if (!cxs_rst_n)		{tx_pkt_vld,tx_pkt_data} <= 513'h0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  	if (!tx_cxs_rst_n)		{tx_pkt_vld,tx_pkt_data} <= 513'h0;
   	else				{tx_pkt_vld,tx_pkt_data} <= 513'h0;
   
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-  	if (!cxs_rst_n)	tx_valid <= 1'b0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  	if (!tx_cxs_rst_n)	tx_valid <= 1'b0;
   	else  			tx_valid <= 1'b0;
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-  	if (!cxs_rst_n)		cxs_activeack <= 1'b0;
-  	else 				cxs_activeack <= 1'b0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  	if (!tx_cxs_rst_n)		tx_cxs_activeack <= 1'b0;
+  	else 				tx_cxs_activeack <= 1'b0;
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-  	if (!cxs_rst_n)	cxs_crdgnt <= 1'b0;
-  	else			cxs_crdgnt <= 1'b0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  	if (!tx_cxs_rst_n)	tx_cxs_crdgnt <= 1'b0;
+  	else			tx_cxs_crdgnt <= 1'b0;
   
-  always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-    if (!cxs_rst_n) cxs_deacthint <= 1'b0;
-	else			cxs_deacthint <= 1'b0;
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+    if (!tx_cxs_rst_n) tx_cxs_deacthint <= 1'b0;
+	else			tx_cxs_deacthint <= 1'b0;
   
-   always_ff @(posedge cxs_clk or negedge cxs_rst_n) 
-    if (!cxs_rst_n)	pkt_send_sts_vld <= 1'b0;
+   always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+    if (!tx_cxs_rst_n)	pkt_send_sts_vld <= 1'b0;
   else 			pkt_send_sts_vld <= 1'b0;
  
 `endif
@@ -253,20 +252,20 @@ module tb_cxs_tx_256to512;
     // -------------------------------------------------
     // Clock & Reset
     // -------------------------------------------------
-    logic cxs_clk;
-    logic cxs_rst_n;
+    logic tx_cxs_clk;
+    logic tx_cxs_rst_n;
 
     // -------------------------------------------------
     // DUT Inputs
     // -------------------------------------------------
-    logic          cxs_valid;
-    logic          cxs_last;
-    logic          cxs_activereq;
-    logic          cxs_crdrtn;
+    logic          tx_cxs_valid;
+    logic          tx_cxs_last;
+    logic          tx_cxs_activereq;
+    logic          tx_cxs_crdrtn;
     logic [1:0]    pkt_send_sts;
-    logic [2:0]    cxs_prcltype;
-    logic [13:0]   cxs_cntl;
-    logic [255:0]  cxs_data;
+    logic [2:0]    tx_cxs_prcltype;
+    logic [13:0]   tx_cxs_cntl;
+    logic [255:0]  tx_cxs_data;
     logic          rx_ready;
 
     // -------------------------------------------------
@@ -275,49 +274,49 @@ module tb_cxs_tx_256to512;
     logic          tx_valid;
     logic          tx_pkt_vld;
     logic [511:0]  tx_pkt_data;
-    logic          cxs_activeack;
-    logic          cxs_crdgnt;
-    logic          cxs_deacthint;
+    logic          tx_cxs_activeack;
+    logic          tx_cxs_crdgnt;
+    logic          tx_cxs_deacthint;
 
     // -------------------------------------------------
     // DUT Instance
     // -------------------------------------------------
     cxs_tx_256to512 dut (
-        .cxs_clk        (cxs_clk),
-        .cxs_rst_n      (cxs_rst_n),
-        .cxs_valid      (cxs_valid),
-        .cxs_last       (cxs_last),
-        .cxs_activereq  (cxs_activereq),
-        .cxs_crdrtn     (cxs_crdrtn),
+        .tx_cxs_clk        (tx_cxs_clk),
+        .tx_cxs_rst_n      (tx_cxs_rst_n),
+        .tx_cxs_valid      (tx_cxs_valid),
+        .tx_cxs_last       (tx_cxs_last),
+        .tx_cxs_activereq  (tx_cxs_activereq),
+        .tx_cxs_crdrtn     (tx_cxs_crdrtn),
         .pkt_send_sts   (pkt_send_sts),
-        .cxs_prcltype   (cxs_prcltype),
-        .cxs_cntl       (cxs_cntl),
-        .cxs_data       (cxs_data),
+        .tx_cxs_prcltype   (tx_cxs_prcltype),
+        .tx_cxs_cntl       (tx_cxs_cntl),
+        .tx_cxs_data       (tx_cxs_data),
         .rx_ready       (rx_ready),
         .tx_valid       (tx_valid),
         .tx_pkt_vld     (tx_pkt_vld),
         .tx_pkt_data    (tx_pkt_data),
-        .cxs_activeack  (cxs_activeack),
-        .cxs_crdgnt     (cxs_crdgnt),
-        .cxs_deacthint  (cxs_deacthint)
+        .tx_cxs_activeack  (tx_cxs_activeack),
+        .tx_cxs_crdgnt     (tx_cxs_crdgnt),
+        .tx_cxs_deacthint  (tx_cxs_deacthint)
     );
 
     // -------------------------------------------------
     // Clock generation (100 MHz)
     // -------------------------------------------------
-    always #5 cxs_clk = ~cxs_clk;
+    always #5 tx_cxs_clk = ~tx_cxs_clk;
 	// -------------------------------------------------
     // TASK: Send data ONLY when interface ready & credit
     // -------------------------------------------------
-   task send_cxs_data(input [255:0] data);
+   task send_tx_cxs_data(input [255:0] data);
     begin
     // Wait until interface is ready AND credit is granted
-      wait (cxs_crdgnt);
+      wait (tx_cxs_crdgnt);
 
-        @(posedge cxs_clk);
-        cxs_valid <= 1'b1;
+        @(posedge tx_cxs_clk);
+        tx_cxs_valid <= 1'b1;
         //rx_ready = 0;
-        cxs_data  <= data;
+        tx_cxs_data  <= data;
     end
     endtask
 
@@ -326,29 +325,29 @@ module tb_cxs_tx_256to512;
     // -------------------------------------------------
     initial begin
         // Defaults
-        cxs_clk        = 0;
-        cxs_rst_n      = 0;
-        cxs_valid      = 0;
-        cxs_last       = 0;
-        cxs_activereq  = 0;
-        cxs_prcltype   = 3'b000;
-        cxs_cntl       = 14'h0;
-        cxs_data       = 256'h0;
+        tx_cxs_clk        = 0;
+        tx_cxs_rst_n      = 0;
+        tx_cxs_valid      = 0;
+        tx_cxs_last       = 0;
+        tx_cxs_activereq  = 0;
+        tx_cxs_prcltype   = 3'b000;
+        tx_cxs_cntl       = 14'h0;
+        tx_cxs_data       = 256'h0;
         rx_ready       = 0;
 
         // Reset
         #20;
-        @(posedge cxs_clk);
-        cxs_rst_n = 1;
+        @(posedge tx_cxs_clk);
+        tx_cxs_rst_n = 1;
       
 
         // -------------------------------------------------
         // TEST 1: Activation request, RX not ready
         // -------------------------------------------------
         $display("TEST1: actreq=1, rx_ready=0");
-        @(posedge cxs_clk);
-        cxs_last      = 1;
-        cxs_activereq = 1;
+        @(posedge tx_cxs_clk);
+        tx_cxs_last      = 1;
+        tx_cxs_activereq = 1;
         rx_ready      = 0;
         #30;
 
@@ -356,26 +355,26 @@ module tb_cxs_tx_256to512;
         // TEST 2: RX becomes ready → activation handshake
         // -------------------------------------------------
         $display("TEST2: rx_ready=1 → activeack");
-        @(posedge cxs_clk);
+        @(posedge tx_cxs_clk);
         rx_ready = 1;
         #110
-      	@(posedge cxs_clk);
+      	@(posedge tx_cxs_clk);
         rx_ready = 0;
       
         // -------------------------------------------------
         // TEST 3: Send data after interface ready & credit
         // -------------------------------------------------
         $display("TEST3: sending data after credit grant");
-       		cxs_cntl = 14'h25;
-      		send_cxs_data(256'h10);
-			send_cxs_data(256'h30);
-//       	send_cxs_data(256'h40);
-//      	send_cxs_data(256'h50);
-//       	send_cxs_data(256'h60);
-//       	send_cxs_data(256'h70);
-		@(posedge cxs_clk);
-        cxs_data  <= 256'h0;
-        cxs_valid <= 1'b0;
+       		tx_cxs_cntl = 14'h25;
+      		send_tx_cxs_data(256'h10);
+			send_tx_cxs_data(256'h30);
+//       	send_tx_cxs_data(256'h40);
+//      	send_tx_cxs_data(256'h50);
+//       	send_tx_cxs_data(256'h60);
+//       	send_tx_cxs_data(256'h70);
+		@(posedge tx_cxs_clk);
+        tx_cxs_data  <= 256'h0;
+        tx_cxs_valid <= 1'b0;
 
         #40;
 
@@ -383,8 +382,8 @@ module tb_cxs_tx_256to512;
         // TEST 4: Deactivation
         // -------------------------------------------------
         $display("TEST4: deactivation");
-        @(posedge cxs_clk);
-        cxs_activereq = 0;
+        @(posedge tx_cxs_clk);
+        tx_cxs_activereq = 0;
         #30;
 
         $display("SIMULATION COMPLETE");
@@ -396,13 +395,13 @@ module tb_cxs_tx_256to512;
     // -------------------------------------------------
     initial begin
         $monitor(
-            "T=%0t | actreq=%b rx_ready=%b | ack=%b | crdgnt=%b | cxs_valid=%b | data_buffer=%h,tx_pkt_vld=%b | tx_pkt_data=%h",
+            "T=%0t | actreq=%b rx_ready=%b | ack=%b | crdgnt=%b | tx_cxs_valid=%b | data_buffer=%h,tx_pkt_vld=%b | tx_pkt_data=%h",
             $time,
-            cxs_activereq,
+            tx_cxs_activereq,
             rx_ready,
-            cxs_activeack,
-            cxs_crdgnt,
-            cxs_valid,
+            tx_cxs_activeack,
+            tx_cxs_crdgnt,
+            tx_cxs_valid,
             dut.data_buf,
           	tx_pkt_vld,
           	tx_pkt_data
