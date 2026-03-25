@@ -159,7 +159,7 @@ assign tx_header = (data_buf_valid) ? {
   
 always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
   if (!tx_cxs_rst_n)	{tx_pkt_vld,tx_pkt_data} <= 513'h0;
-  else				{tx_pkt_vld,tx_pkt_data} <= (data_buf_valid) ? {1'b1,tx_header[255:0],data_buf[255:0]} : 513'h0;
+  else				{tx_pkt_vld,tx_pkt_data} <= (data_buf_valid) ? {1'b1,data_buf[255:0],tx_header[255:0]} : 513'h0;
 
 // ============================================================
 // Packet Send Status Generation
