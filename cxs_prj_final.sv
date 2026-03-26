@@ -70,6 +70,10 @@ parameter DATA_FLITWIDTH  = 2'b01;   // Encoded flit width (e.g., 256-bit mode)
 always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
   if (!tx_cxs_rst_n)	tx_valid <= 1'b0;
   else 					tx_valid <= tx_cxs_activereq;
+  
+  always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
+  if (!tx_cxs_rst_n)	tx_cxs_crdgnt <= 1'b0;
+  else 					tx_cxs_crdgnt <= tx_cxs_activereq; 
 
 assign tx_cxs_activeack_deassert = (!(tx_cxs_activereq & tx_valid & rx_ready));
   
@@ -81,11 +85,7 @@ always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
 	if (!tx_cxs_rst_n)									tx_cxs_activeack <= 1'b0;
 	else if (tx_cxs_activeack_deassert)					tx_cxs_activeack <= 1'b0;
 	else if (tx_cxs_activereq & tx_valid & rx_ready)	tx_cxs_activeack <= 1'b1;
- 
-always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
-	if (!tx_cxs_rst_n)								tx_cxs_crdgnt <= 1'b0;
-   	else if (tx_cxs_activeack_deassert)				tx_cxs_crdgnt <= 1'b0;
-  	else if(tx_cxs_activereq & tx_valid & rx_ready)	tx_cxs_crdgnt <= 1'b1;
+
 
 // ============================================================
 // Deactivation Hint Logic
