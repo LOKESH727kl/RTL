@@ -5,7 +5,7 @@
 `define DATA_FLITWIDTH  2'b01
 
 
-module cxs_tx_256to512 (
+module top_cxs_pktzr_depktzr_tx(
 
     input  logic          tx_cxs_clk,      // System clock
     input  logic          tx_cxs_rst_n,    // Active-low asynchronous reset
@@ -142,7 +142,7 @@ assign tx_header = (data_buf_valid) ? {
 // Packet Assembly and Output Stage
 // ------------------------------------------------------------
 // Purpose:
-//   Forms 512-bit transmit packet and drives TX interface.  
+// Forms 512-bit transmit packet and drives TX interface.  
   
 always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
   if (!tx_cxs_rst_n)	{tx_pkt_vld,tx_pkt_data} <= 513'h0;
@@ -159,11 +159,11 @@ always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
   
 always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
   if (!tx_cxs_rst_n)	pkt_send_sts <= 2'b00;
-  else 					pkt_send_sts <= (tx_header_err_vld) ? 2'b10 : (data_buf_valid) ? 2'b01 : 2'b00 ;
+  else 					pkt_send_sts <= (tx_header_err_vld) ? 2'b10 : (data_buf_valid) ? 2'b01 : 2'b00;
 
 always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
   if (!tx_cxs_rst_n)	pkt_send_sts_vld <= 1'b0;
-  else 					pkt_send_sts_vld <= (tx_header_err_vld | data_buf_valid) ;
+  else 					pkt_send_sts_vld <= (tx_header_err_vld | data_buf_valid);
   
 `else 
   
@@ -187,8 +187,8 @@ always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
   	else 				data_tx_cnt <= 2'h0;
   
   always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
-    if (!tx_cxs_rst_n) 	{data_buf_valid,data_buf}	<= 257'h0;
-  	else 				{data_buf_valid,data_buf}	<= 257'h0;
+    if (!tx_cxs_rst_n) 	{data_buf_valid,data_buf} <= 257'h0;
+  	else 				{data_buf_valid,data_buf} <= 257'h0;
   
   always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
   	if (!tx_cxs_rst_n)	{tx_pkt_vld,tx_pkt_data} <= 513'h0;
@@ -200,8 +200,8 @@ always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
   	else  				tx_valid <= 1'b0;
   
   always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
-  	if (!tx_cxs_rst_n)		tx_cxs_activeack <= 1'b0;
-  	else 					tx_cxs_activeack <= 1'b0;
+  	if (!tx_cxs_rst_n)	tx_cxs_activeack <= 1'b0;
+  	else 				tx_cxs_activeack <= 1'b0;
   
   always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
   	if (!tx_cxs_rst_n)	tx_cxs_crdgnt <= 1'b0;
@@ -213,7 +213,7 @@ always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n)
 	
    always_ff @(posedge tx_cxs_clk or negedge tx_cxs_rst_n) 
     if (!tx_cxs_rst_n)	pkt_send_sts_vld <= 1'b0;
-  else 					pkt_send_sts_vld <= 1'b0;
+	else 				pkt_send_sts_vld <= 1'b0;
  
 `endif
 endmodule
